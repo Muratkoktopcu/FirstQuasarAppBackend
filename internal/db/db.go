@@ -10,6 +10,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
+/*Connect() → Veritabanına bağlanmak için yazılmış fonksiyon.
+
+Dönüş tipi *pgxpool.Pool → PostgreSQL bağlantı havuzu nesnesinin adresi.*/
+
 func Connect() *pgxpool.Pool {
 
 	err := godotenv.Load()

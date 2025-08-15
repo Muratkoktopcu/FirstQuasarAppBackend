@@ -1,0 +1,67 @@
+basePath: /api
+definitions:
+  user.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+  user.RegisterResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Quasar frontend'in kullandığı Go backend API dokümantasyonu.
+  title: My API
+  version: "1.0"
+paths:
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Yeni bir kullanıcı oluşturur.
+      parameters:
+      - description: Kayıt bilgileri
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/user.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/user.RegisterResponse'
+        "400":
+          description: invalid json or validation error
+          schema:
+            type: string
+        "409":
+          description: email already registered
+          schema:
+            type: string
+        "500":
+          description: db error
+          schema:
+            type: string
+      summary: Kullanıcı kaydı
+      tags:
+      - auth
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

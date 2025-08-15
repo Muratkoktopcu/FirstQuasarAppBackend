@@ -13,15 +13,37 @@ import (
 type Handler struct {
 	repo *Repository
 }
+type errorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
 
 func NewHandler(repo *Repository) *Handler {
 	return &Handler{repo: repo}
 }
 
+// Register godoc
+// @Summary     Kullanıcı kaydı
+// @Description Yeni bir kullanıcı oluşturur.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       payload body     RegisterRequest true "Kayıt bilgileri"
+// @Success     201     {object} RegisterResponse
+// @Failure     400     {string} string "invalid json or validation error"
+// @Failure     409     {string} string "email already registered"
+// @Failure     500     {string} string "db error"
+// @Router      /auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_json"})
 		return
 	}
 
