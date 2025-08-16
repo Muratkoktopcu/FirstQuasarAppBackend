@@ -7,13 +7,14 @@ import (
 
 	"myfirstbackend/internal/db"
 	mw "myfirstbackend/internal/http/middleware"
+	"myfirstbackend/internal/http/router"
 	"myfirstbackend/internal/user"
 
 	_ "myfirstbackend/docs" // Import the generated docs package
 
-	"github.com/go-chi/chi/v5"
+	//"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
-	httpSwagger "github.com/swaggo/http-swagger"
+	//httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // @title           My API
@@ -35,18 +36,20 @@ func main() {
 	repo := user.NewRepository(pool)
 	uh := user.NewHandler(repo)
 
-	r := chi.NewRouter()
-	r.Use(mw.CORS)
+	r := router.New(mw.CORS, uh)
+
+	//r := chi.NewRouter()
+	//r.Use(mw.CORS)
 
 	// Swagger UI ( /swagger/index.html )
-	r.Get("/swagger/*", httpSwagger.WrapHandler)
+	//r.Get("/swagger/*", httpSwagger.WrapHandler)
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	/*r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
-	})
+	})*/
 
 	// Auth routes
-	r.Post("/api/auth/register", uh.Register)
+	//r.Post("/api/auth/register", uh.Register)
 
 	port := os.Getenv("PORT")
 	if port == "" {

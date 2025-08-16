@@ -18,6 +18,9 @@ type errorResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
+// writeHeader status kodu yazar ve sadece 1 kez çağrılabilir
+// Header.Set http cevabının header kısmına bilgi eklemek veya değiştirmek için kullanılır
+// writeJSON  HTTP cevabını JSON formatında döndürür
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

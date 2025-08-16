@@ -11,6 +11,7 @@ type Repository struct {
 	db *pgxpool.Pool
 }
 
+// dependency injection için NewRepository fonksiyonu
 func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
