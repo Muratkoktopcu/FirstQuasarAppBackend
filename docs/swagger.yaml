@@ -1,21 +1,31 @@
 basePath: /api
 definitions:
-  user.RegisterRequest:
+  dto.AuthResponse:
     properties:
-      email:
+      accessToken:
         type: string
-      name:
-        type: string
-      password:
+      refreshToken:
         type: string
     type: object
-  user.RegisterResponse:
+  dto.LoginRequest:
     properties:
       email:
+        example: alice@example.com
         type: string
-      id:
-        type: integer
-      name:
+      password:
+        example: P@ssw0rd!
+        type: string
+    type: object
+  dto.RegisterRequest:
+    properties:
+      email:
+        example: alice@example.com
+        type: string
+      fullName:
+        example: Alice Doe
+        type: string
+      password:
+        example: P@ssw0rd!
         type: string
     type: object
 host: localhost:8080
@@ -25,40 +35,68 @@ info:
   title: My API
   version: "1.0"
 paths:
-  /auth/register:
+  /auth/login:
     post:
       consumes:
       - application/json
-      description: Yeni bir kullanıcı oluşturur.
+      description: Email + password ile giriş
       parameters:
-      - description: Kayıt bilgileri
+      - description: Login payload
         in: body
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/user.RegisterRequest'
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      summary: Login
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Yeni kullanıcı kaydı (email, password, fullName)
+      parameters:
+      - description: Register payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/user.RegisterResponse'
+            $ref: '#/definitions/dto.AuthResponse'
         "400":
-          description: invalid json or validation error
+          description: Bad Request
           schema:
             type: string
-        "409":
-          description: email already registered
-          schema:
-            type: string
-        "500":
-          description: db error
-          schema:
-            type: string
-      summary: Kullanıcı kaydı
+      summary: Register user
       tags:
-      - auth
+      - Auth
+  /health:
+    get:
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Health check
+      tags:
+      - Health
 securityDefinitions:
   BearerAuth:
     in: header

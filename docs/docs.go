@@ -15,9 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/register": {
+        "/auth/login": {
             "post": {
-                "description": "Yeni bir kullanıcı oluşturur.",
+                "description": "Email + password ile giriş",
                 "consumes": [
                     "application/json"
                 ],
@@ -25,17 +25,57 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "Auth"
                 ],
-                "summary": "Kullanıcı kaydı",
+                "summary": "Login",
                 "parameters": [
                     {
-                        "description": "Kayıt bilgileri",
+                        "description": "Login payload",
                         "name": "payload",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.RegisterRequest"
+                            "$ref": "#/definitions/dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AuthResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "description": "Yeni kullanıcı kaydı (email, password, fullName)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register user",
+                "parameters": [
+                    {
+                        "description": "Register payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterRequest"
                         }
                     }
                 ],
@@ -43,23 +83,27 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/user.RegisterResponse"
+                            "$ref": "#/definitions/dto.AuthResponse"
                         }
                     },
                     "400": {
-                        "description": "invalid json or validation error",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "string"
                         }
-                    },
-                    "409": {
-                        "description": "email already registered",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "db error",
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "ok",
                         "schema": {
                             "type": "string"
                         }
@@ -69,31 +113,44 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "user.RegisterRequest": {
+        "dto.AuthResponse": {
             "type": "object",
             "properties": {
-                "email": {
+                "accessToken": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
-                "password": {
+                "refreshToken": {
                     "type": "string"
                 }
             }
         },
-        "user.RegisterResponse": {
+        "dto.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "alice@example.com"
                 },
-                "id": {
-                    "type": "integer"
+                "password": {
+                    "type": "string",
+                    "example": "P@ssw0rd!"
+                }
+            }
+        },
+        "dto.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
                 },
-                "name": {
-                    "type": "string"
+                "fullName": {
+                    "type": "string",
+                    "example": "Alice Doe"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "P@ssw0rd!"
                 }
             }
         }

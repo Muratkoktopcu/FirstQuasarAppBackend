@@ -6,15 +6,16 @@ import (
 	"os"
 
 	"myfirstbackend/internal/db"
-	mw "myfirstbackend/internal/http/middleware"
+	"myfirstbackend/internal/handler/auth"
+	"myfirstbackend/internal/http/middleware"
 	"myfirstbackend/internal/http/router"
-	"myfirstbackend/internal/user"
+	"myfirstbackend/internal/repository/user"
+	"myfirstbackend/internal/security/jwt"
+	authsvc "myfirstbackend/internal/service/auth"
 
-	_ "myfirstbackend/docs" // Import the generated docs package
+	_ "myfirstbackend/docs"
 
-	//"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
-	//httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // @title           My API
@@ -22,39 +23,38 @@ import (
 // @description     Quasar frontend'in kullandığı Go backend API dokümantasyonu.
 // @host            localhost:8080
 // @BasePath        /api
-
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-
 func main() {
 	_ = godotenv.Load(".env", "../.env", "../../.env")
 
 	pool := db.Connect()
 	defer pool.Close()
 
-	repo := user.NewRepository(pool)
-	uh := user.NewHandler(repo)
+	userRepo := user.NewPgRepository(pool)
 
-	r := router.New(mw.CORS, uh)
+	jwtCfg := jwt.Config{
+		Secret:          os.Getenv("JWT_SECRET"),
+		AccessTokenTTL:  os.Getenv("JWT_ACCESS_TTL"),  // örn: "15m"
+		RefreshTokenTTL: os.Getenv("JWT_REFRESH_TTL"), // örn: "720h"
+		Issuer:          "myfirstbackend",
+	}
+	jwtSvc := jwt.New(jwtCfg)
 
-	//r := chi.NewRouter()
-	//r.Use(mw.CORS)
+	authService := authsvc.New(userRepo, jwtSvc)
+	authHandler := auth.NewHandler(authService)
 
-	// Swagger UI ( /swagger/index.html )
-	//r.Get("/swagger/*", httpSwagger.WrapHandler)
-
-	/*r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok"))
-	})*/
-
-	// Auth routes
-	//r.Post("/api/auth/register", uh.Register)
+	r := router.New(
+		middleware.CORS,
+		middleware.JWTAuth(jwtSvc), // protected rotalar için
+		authHandler,
+	)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Println("listening on :" + port)
+	log.Println("listening on http://localhost:" + port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
