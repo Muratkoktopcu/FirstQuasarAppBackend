@@ -28,16 +28,19 @@ func NewHandler(svc auth.Service) *Handler {
 // @Router       /auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var in dto.RegisterRequest
+	//HTTP body’sindeki JSON’u in struct’ına map etmeye çalışır.
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
-	out, err := h.svc.Register(r.Context(), in)
+	//r.Context(): HTTP request’in context’i. Timeout, cancellation, trace gibi şeyler bu context’te tutulur. DB işlemleri de iptal edilebilir hale gelir.
+	out, err := h.svc.Register(r.Context(), in) //
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusCreated) //response’un durum kodunu 201 Created olarak ayarlar.
+	//out: DTO (Data Transfer Object) olarak tanımlanmış bir yapıdır.
 	_ = json.NewEncoder(w).Encode(out)
 }
 

@@ -13,6 +13,6 @@ import (
 // @Router       /health [get]
 func MountHealth(r *chi.Mux) {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok")) // http responseun body'sine cevap yazma fonksiyonu
 	})
 }

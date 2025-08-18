@@ -2,18 +2,19 @@ package db
 
 import (
 	"context"
-	"log"
-	"os"
-	"time"
+	"log"  //loglama için kullanılır.Hataları ve bilgileri konsola yazdırmak için.
+	"os"   //ortam değişkenlerini okumak için kullanılır.
+	"time" //zaman aşımı ve timeout için kullanılır.
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
+	"github.com/jackc/pgx/v5/pgxpool" //PostgreSQL için bağlantı havuzu sağlayan kütüphane. Havuz (pool), birden fazla bağlantıyı yöneterek performansı artırır.
+	"github.com/joho/godotenv"        //.env dosyasını okuyup ortam değişkenlerine (os.Getenv) aktarmaya yarar.
 )
 
-/*Connect() → Veritabanına bağlanmak için yazılmış fonksiyon.
-
-Dönüş tipi *pgxpool.Pool → PostgreSQL bağlantı havuzu nesnesinin adresi.*/
-
+/*
+Connect() → Veritabanına bağlanmak için yazılmış fonksiyon.
+Dönüş tipi *pgxpool.Pool → PostgreSQL bağlantı havuzu nesnesinin adresi.
+Bu fonksiyon çağırıldığında her seferinde hazır ve test edilmiş bir veritabanı bağlantısı elde etmiş olursun.
+*/
 func Connect() *pgxpool.Pool {
 
 	err := godotenv.Load()

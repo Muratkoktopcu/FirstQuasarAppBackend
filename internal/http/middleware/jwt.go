@@ -8,10 +8,12 @@ import (
 	"myfirstbackend/internal/security/jwt"
 )
 
+// Neden özel bir tip? Context içine string gibi ortak tiplerle key koyarsan başka paketlerle çakışma riski olur. ctxKey gibi özel tip kullanmak, çakışmayı engeller (Go’nun önerdiği pratik).
 type ctxKey string
 
 const ContextUserID ctxKey = "userID"
 
+// Middleware factory;Bir jwtSvc alır, geri dönüşte middleware döndürür.
 func JWTAuth(jwtSvc jwt.Service) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {

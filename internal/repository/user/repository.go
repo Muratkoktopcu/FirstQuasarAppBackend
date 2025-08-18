@@ -19,6 +19,11 @@ type pgRepository struct {
 	pool *pgxpool.Pool
 }
 
+/*
+Bu fonksiyon, dışarıdan pool alıp pgRepository döndürüyor.
+Dönüş tipi Repository interface olduğu için, dışarıya sadece interface görünüyor (soyutlama).
+Bu da katmanlar arası bağımlılığı azaltır (clean architecture mantığı).
+*/
 func NewPgRepository(pool *pgxpool.Pool) Repository {
 	return &pgRepository{pool: pool}
 }
