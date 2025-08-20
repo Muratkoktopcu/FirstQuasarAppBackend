@@ -85,7 +85,7 @@ func main() {
 	jwtSvc := jwt.New(jwtCfg)
 
 	authService := authsvc.New(userRepo, jwtSvc)
-	authHandler := auth.NewHandler(authService)
+	authHandler := auth.NewHandler(authService, jwtSvc)
 
 	r := router.New(
 		middleware.CORS,

@@ -19,6 +19,8 @@ func CORS(next http.Handler) http.Handler {
 		AllowedMethods:   allowedMethods,
 		AllowedHeaders:   allowedHeaders,
 		AllowCredentials: allowCredentials,
+		ExposedHeaders:   []string{"Authorization", "X-Access-Token", "X-Expires-In"},
+		MaxAge:           300,
 	})
 	return c.Handler(next)
 }

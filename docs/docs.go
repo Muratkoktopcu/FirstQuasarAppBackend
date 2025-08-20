@@ -41,9 +41,55 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
+                        "description": "Access token header’da, refresh HttpOnly cookie’de",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Refresh cookie’yi temizler (logout)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.AuthResponse"
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "HttpOnly cookie’deki refresh token ile yeni access token üretir. (Opsiyonel rotation)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh access token",
+                "responses": {
+                    "200": {
+                        "description": "Access token header’da, refresh cookie opsiyonel yenilenir",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "401": {
@@ -81,9 +127,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Access token header’da, refresh HttpOnly cookie’de",
                         "schema": {
-                            "$ref": "#/definitions/dto.AuthResponse"
+                            "type": "string"
                         }
                     },
                     "400": {
@@ -113,17 +159,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.AuthResponse": {
-            "type": "object",
-            "properties": {
-                "accessToken": {
-                    "type": "string"
-                },
-                "refreshToken": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.LoginRequest": {
             "type": "object",
             "properties": {

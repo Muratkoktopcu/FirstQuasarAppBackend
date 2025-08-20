@@ -3,55 +3,124 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 
 	"myfirstbackend/internal/model/dto"
-	"myfirstbackend/internal/service/auth"
+	"myfirstbackend/internal/security/jwt"
+	authsvc "myfirstbackend/internal/service/auth"
 )
 
 type Handler struct {
-	svc auth.Service
+	svc authsvc.Service
+	jwt jwt.Service
 }
 
-func NewHandler(svc auth.Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc authsvc.Service, jwtSvc jwt.Service) *Handler {
+	return &Handler{svc: svc, jwt: jwtSvc}
 }
 
-// Register godoc
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+// Access token’ı header’a, expiresIn’i de X-Expires-In header’ına yazar.
+func (h *Handler) setAccessHeaders(w http.ResponseWriter, accessToken string) {
+	w.Header().Set("Authorization", "Bearer "+accessToken)
+	// exp'i token'dan okuyup kalan süreyi hesaplayalım:
+	_, claims, err := h.jwt.Parse(accessToken)
+	if err == nil {
+		if expf, ok := claims["exp"].(float64); ok {
+			exp := time.Unix(int64(expf), 0).UTC()
+			remaining := time.Until(exp)
+			if remaining < 0 {
+				remaining = 0
+			}
+			w.Header().Set("X-Expires-In", strconv.FormatInt(int64(remaining.Seconds()), 10))
+		}
+	}
+	// Bilgilendirici; istersen kaldır:
+	w.Header().Set("X-Token-Type", "access")
+}
+
+// Refresh token’ı HttpOnly cookie olarak yazar.
+func (h *Handler) setRefreshCookie(w http.ResponseWriter, refreshToken string) {
+	_, claims, err := h.jwt.Parse(refreshToken)
+	var exp time.Time
+	if err == nil {
+		if unix, ok := claims["exp"].(float64); ok {
+			exp = time.Unix(int64(unix), 0).UTC()
+		}
+	}
+
+	c := &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/api/auth/refresh", // sadece refresh çağrısında gönderilsin
+		HttpOnly: true,
+		Secure:   true,                  // prod’da true; local HTTP geliştirirken false yapabilirsin
+		SameSite: http.SameSiteNoneMode, // SPA farklı origin ise gerekli
+	}
+	if !exp.IsZero() {
+		c.Expires = exp
+	}
+	http.SetCookie(w, c)
+}
+
+// Refresh cookie’yi temizler (logout).
+func (h *Handler) clearRefreshCookie(w http.ResponseWriter) {
+	c := &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/api/auth/refresh",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+	}
+	http.SetCookie(w, c)
+}
+
+// ---- Handlers ----
+
 // @Summary      Register user
 // @Description  Yeni kullanıcı kaydı (email, password, fullName)
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
 // @Param        payload  body      dto.RegisterRequest  true  "Register payload"
-// @Success      201      {object}  dto.AuthResponse
+// @Success      201      {string}  string  "Access token header’da, refresh HttpOnly cookie’de"
 // @Failure      400      {string}  string
 // @Router       /auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var in dto.RegisterRequest
-	//HTTP body’sindeki JSON’u in struct’ına map etmeye çalışır.
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
-	//r.Context(): HTTP request’in context’i. Timeout, cancellation, trace gibi şeyler bu context’te tutulur. DB işlemleri de iptal edilebilir hale gelir.
-	out, err := h.svc.Register(r.Context(), in) //
+	out, err := h.svc.Register(r.Context(), in)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated) //response’un durum kodunu 201 Created olarak ayarlar.
-	//out: DTO (Data Transfer Object) olarak tanımlanmış bir yapıdır.
-	_ = json.NewEncoder(w).Encode(out)
+
+	h.setRefreshCookie(w, out.RefreshToken) // refresh → cookie
+	h.setAccessHeaders(w, out.AccessToken)  // access → headerlar
+
+	// Body boş/çok küçük tutuyoruz; istersen kısa bir mesaj dön:
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "registered"})
 }
 
-// Login godoc
 // @Summary      Login
 // @Description  Email + password ile giriş
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
 // @Param        payload  body      dto.LoginRequest  true  "Login payload"
-// @Success      200      {object}  dto.AuthResponse
+// @Success      200      {string}  string  "Access token header’da, refresh HttpOnly cookie’de"
 // @Failure      401      {string}  string
 // @Router       /auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -65,5 +134,68 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(out)
+
+	h.setRefreshCookie(w, out.RefreshToken)
+	h.setAccessHeaders(w, out.AccessToken)
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "logged_in"})
+}
+
+// @Summary      Refresh access token
+// @Description  HttpOnly cookie’deki refresh token ile yeni access token üretir. (Opsiyonel rotation)
+// @Tags         Auth
+// @Produce      json
+// @Success      200  {string}  string  "Access token header’da, refresh cookie opsiyonel yenilenir"
+// @Failure      401  {string}  string
+// @Router       /auth/refresh [post]
+func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("refresh_token")
+	if err != nil || c.Value == "" {
+		http.Error(w, "missing refresh token", http.StatusUnauthorized)
+		return
+	}
+	_, claims, err := h.jwt.Parse(c.Value)
+	if err != nil {
+		http.Error(w, "invalid refresh token", http.StatusUnauthorized)
+		return
+	}
+	if typ, _ := claims["type"].(string); typ != "refresh" {
+		http.Error(w, "invalid token type", http.StatusUnauthorized)
+		return
+	}
+
+	subStr, _ := claims["sub"].(string)
+	email, _ := claims["email"].(string)
+
+	// (Opsiyonel) DB’de jti kontrolü & rotation yapılabilir (önerilir)
+	// Şimdilik sadece yeni tokenlar üretelim:
+	// Burada service yoksa jwtSvc.GenerateTokens da kullanabilirdik; fakat
+	// rotation ileride service layer’a eklenirse oradan yürütmek mantıklı olur.
+	userID, _ := strconv.ParseInt(subStr, 10, 64)
+	access, refresh, err := h.jwt.GenerateTokens(userID, email)
+	if err != nil {
+		// Eğer service’de böyle bir fonk yoksa: service değişmeden jwtSvc.GenerateTokens ile üret:
+		// userID, _ := strconv.ParseInt(subStr, 10, 64)
+		// access, refresh, err = h.jwt.GenerateTokens(userID, email)
+		http.Error(w, "could not issue tokens", http.StatusInternalServerError)
+		return
+	}
+
+	// Yeni refresh’i cookie’ye yaz (rotation yapıyorsan mutlaka)
+	h.setRefreshCookie(w, refresh)
+	// Yeni access’i header’a yaz
+	h.setAccessHeaders(w, access)
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "refreshed"})
+}
+
+// @Summary      Logout
+// @Description  Refresh cookie’yi temizler (logout)
+// @Tags         Auth
+// @Produce      json
+// @Success      200  {string}  string
+// @Router       /auth/logout [post]
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	h.clearRefreshCookie(w)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "logged_out"})
 }
