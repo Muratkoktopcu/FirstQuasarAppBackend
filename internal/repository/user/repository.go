@@ -13,6 +13,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, u *domain.User) (int64, error)
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
+	GetByID(ctx context.Context, id int64) (*domain.User, error)
 }
 
 type pgRepository struct {
@@ -52,6 +53,17 @@ func (r *pgRepository) FindByEmail(ctx context.Context, email string) (*domain.U
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (r *pgRepository) GetByID(ctx context.Context, id int64) (*domain.User, error) {
+	const q = `SELECT id, email, full_name, created_at, updated_at FROM users WHERE id=$1`
+	u := &domain.User{}
+	if err := r.pool.
+		QueryRow(ctx, q, id).
+		Scan(&u.ID, &u.Email, &u.FullName, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		return nil, err
+	}
+	return u, nil
 }
 
 // (Not: tabloyu oluşturmadıysan örnek SQL)

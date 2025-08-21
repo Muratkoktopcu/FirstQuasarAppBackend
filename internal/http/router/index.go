@@ -10,7 +10,7 @@ import (
 )
 
 // yeni bir router oluşturur(chi.Mux) ve CORS middleware'ini uygular.
-func New(cors func(http.Handler) http.Handler, jwtMw func(http.Handler) http.Handler, ah *auth.Handler) *chi.Mux {
+func New(cors func(http.Handler) http.Handler, jwtMw func(http.Handler) http.Handler, ah *auth.Handler, ph *auth.HandlerGetProfile) *chi.Mux {
 	r := chi.NewRouter()
 	if cors != nil {
 		r.Use(cors)
@@ -29,9 +29,7 @@ func New(cors func(http.Handler) http.Handler, jwtMw func(http.Handler) http.Han
 	// MountWhatever(api, ...)
 
 	// Protected örneği (ileride):
-	// api.With(jwtMw).Route("/profile", func(pr chi.Router) {
-	//   pr.Get("/", profileHandler)
-	// })
+	MountProfile(api, jwtMw, ph)
 
 	r.Mount("/api", api) // /api/* rotalarını api router'ına bağlar
 	/*Mount → Başka bir router veya handler’ı, belli bir path’in altına takmaya (mount etmeye) yarar.

@@ -13,6 +13,12 @@ type ctxKey string
 
 const ContextUserID ctxKey = "userID"
 
+func UserIDFromCtx(r *http.Request) (int64, bool) {
+	v := r.Context().Value(ContextUserID)
+	id, ok := v.(int64)
+	return id, ok
+}
+
 // Middleware factory;Bir jwtSvc alır, geri dönüşte middleware döndürür.
 func JWTAuth(jwtSvc jwt.Service) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

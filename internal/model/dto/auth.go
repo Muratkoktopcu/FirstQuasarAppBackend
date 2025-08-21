@@ -15,3 +15,9 @@ type AuthResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }
+
+type UserProfileResponse struct {
+	ID       int64  `json:"id"`
+	Email    string `json:"email"`
+	FullName string `json:"fullName"`
+}

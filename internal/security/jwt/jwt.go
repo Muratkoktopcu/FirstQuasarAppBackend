@@ -83,6 +83,14 @@ func (s *service) GenerateTokens(userID int64, email string) (string, string, er
 // Parse token'ı alır, doğrular ve içindeki bilgileri çıkarır.
 // Eğer token geçerli değilse hata döner.
 func (s *service) Parse(tokenStr string) (*jwtv5.Token, jwtv5.MapClaims, error) {
+	/**jwtv5.Token
+	  Parse edilmiş token nesnesi.
+	  İçinde header, method, claims gibi tüm token yapısı bulunur.*/
+	/**jwtv5.MapClaims
+	  Token’ın payload kısmındaki claims (id, email, expireTime gibi key-value bilgiler).
+	  Tipi: map[string]interface{} benzeri.
+	  Mesela claims["sub"] veya claims["exp"] gibi değerleri buradan alırsın.*/
+
 	//NewParser fonksiyonu, JWT token’larını okumak ve doğrulamak için bir parser nesnesi oluşturur.
 	parser := jwtv5.NewParser(jwtv5.WithValidMethods([]string{jwtv5.SigningMethodHS256.Alg()})) //alg saldırılarına karşı koruma.Token sadece HS256 ile imzalanmışsa kabul edilir.alg : none veya farklı bir algoritma ise hata döner.
 	claims := jwtv5.MapClaims{}                                                                 //map[string]interface{} olarak tanımlanır.

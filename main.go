@@ -85,12 +85,15 @@ func main() {
 	jwtSvc := jwt.New(jwtCfg)
 
 	authService := authsvc.New(userRepo, jwtSvc)
+	profilService := authsvc.NewServiceProfile(userRepo)
+	profilHandler := auth.NewHandlerGetProfile(profilService)
 	authHandler := auth.NewHandler(authService, jwtSvc)
 
 	r := router.New(
 		middleware.CORS,
 		middleware.JWTAuth(jwtSvc), // protected rotalar için
 		authHandler,
+		profilHandler,
 	)
 
 	port := os.Getenv("PORT")

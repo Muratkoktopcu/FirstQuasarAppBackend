@@ -21,6 +21,15 @@ definitions:
         example: P@ssw0rd!
         type: string
     type: object
+  dto.UserProfileResponse:
+    properties:
+      email:
+        type: string
+      fullName:
+        type: string
+      id:
+        type: integer
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -121,6 +130,37 @@ paths:
       summary: Health check
       tags:
       - Health
+  /profile:
+    get:
+      description: JWT ile doğrulanmış kullanıcının profilini döndürür
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserProfileResponse'
+        "400":
+          description: invalid user id
+          schema:
+            type: string
+        "401":
+          description: unauthorized
+          schema:
+            type: string
+        "404":
+          description: user not found
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Kullanıcı profilini getir
+      tags:
+      - profile
 securityDefinitions:
   BearerAuth:
     in: header
