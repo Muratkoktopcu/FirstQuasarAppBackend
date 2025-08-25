@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -31,6 +32,7 @@ func (h *Handler) setAccessHeaders(w http.ResponseWriter, accessToken string) {
 	w.Header().Set("Authorization", "Bearer "+accessToken)
 	// exp'i token'dan okuyup kalan süreyi hesaplayalım:
 	_, claims, err := h.jwt.Parse(accessToken)
+	log.Printf("Parsed access token in setAccessHeaders: %v", claims)
 	if err == nil {
 		if expf, ok := claims["exp"].(float64); ok {
 			exp := time.Unix(int64(expf), 0).UTC()
@@ -48,6 +50,7 @@ func (h *Handler) setAccessHeaders(w http.ResponseWriter, accessToken string) {
 // Refresh token’ı HttpOnly cookie olarak yazar.
 func (h *Handler) setRefreshCookie(w http.ResponseWriter, refreshToken string) {
 	_, claims, err := h.jwt.Parse(refreshToken)
+	log.Printf("Parsed refresh token in setRefreshCookie: %v", claims)
 	var exp time.Time
 	if err == nil {
 		if unix, ok := claims["exp"].(float64); ok {
@@ -58,7 +61,7 @@ func (h *Handler) setRefreshCookie(w http.ResponseWriter, refreshToken string) {
 	c := &http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
-		Path:     "/api/auth/refresh", // sadece refresh çağrısında gönderilsin
+		Path:     "/", // sadece refresh çağrısında gönderilsin
 		HttpOnly: true,
 		Secure:   true,                  // prod’da true; local HTTP geliştirirken false yapabilirsin
 		SameSite: http.SameSiteNoneMode, // SPA farklı origin ise gerekli
@@ -74,7 +77,7 @@ func (h *Handler) clearRefreshCookie(w http.ResponseWriter) {
 	c := &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
-		Path:     "/api/auth/refresh",
+		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
@@ -155,6 +158,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, claims, err := h.jwt.Parse(c.Value)
+	log.Printf("Parsed refresh token in Refresh: %v", claims)
 	if err != nil {
 		http.Error(w, "invalid refresh token", http.StatusUnauthorized)
 		return
@@ -164,14 +168,42 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subStr, _ := claims["sub"].(string)
+	v, ok := claims["sub"]
+	if !ok {
+		http.Error(w, "missing sub", http.StatusUnauthorized)
+		log.Printf("yeni versiyonda bi bak bakam: %v", v)
+		return
+	}
+	//log.Printf("refresh fonk içerisindeki sub: %s", subStr)
 	email, _ := claims["email"].(string)
+	var userID int64
+	switch vv := v.(type) {
+	case string:
+		id, err := strconv.ParseInt(vv, 10, 64)
+		if err != nil {
+			http.Error(w, "bad sub", http.StatusUnauthorized)
+			return
+		}
+		userID = id
+	case float64:
+		userID = int64(vv)
+	case json.Number: // ihtimale karşı
+		id, err := vv.Int64()
+		if err != nil {
+			http.Error(w, "bad sub", http.StatusUnauthorized)
+			return
+		}
+		userID = id
+	default:
+		http.Error(w, "invalid sub type", http.StatusUnauthorized)
+		return
+	}
 
 	// (Opsiyonel) DB’de jti kontrolü & rotation yapılabilir (önerilir)
 	// Şimdilik sadece yeni tokenlar üretelim:
 	// Burada service yoksa jwtSvc.GenerateTokens da kullanabilirdik; fakat
 	// rotation ileride service layer’a eklenirse oradan yürütmek mantıklı olur.
-	userID, _ := strconv.ParseInt(subStr, 10, 64)
+	//userID, _ := strconv.ParseInt(subStr, 10, 64)
 	access, refresh, err := h.jwt.GenerateTokens(userID, email)
 	if err != nil {
 		// Eğer service’de böyle bir fonk yoksa: service değişmeden jwtSvc.GenerateTokens ile üret:
